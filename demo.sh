@@ -10,8 +10,11 @@ run 'grep -rnE "subprocess|\.execute\(|open\(|render_template_string|requests\.g
 echo; echo "### 2. GREP: who calls the wrappers?"
 run 'grep -rnE "run_cmd|read_doc|get_user" --include=*.py flask_app/'
 
-echo; echo "### 3. TRACE: the route (source)"
-run 'grep -n -A3 "route(\"/user\")" flask_app/app.py'
+echo; echo "### 3. TRACE: four greps, sink to source"
+run 'grep -rn "cur.execute" flask_app/'
+run 'grep -rn "_query(" flask_app/ | grep -v "def "'
+run 'grep -rn "get_user(" flask_app/ | grep -v "def "'
+run 'grep -n "uid" flask_app/app.py'
 
 echo; echo "### 4. PWN: probe"
 run "curl -s \"$B/user?id=1'\" | head -c 300"

@@ -101,6 +101,21 @@ allowlist. **Candidate confirmed.** Write it in your notebook:
 #1  SQLi   request.args[id] → get_user → _query → cur.execute   sanitizer: none
 ```
 
+### The same walk as four greps
+
+You don't need an IDE for this. At each hop, grep for the name you're holding, read the line
+that produced it, and now you're holding something new. Stop when it's `request.`:
+
+```bash
+grep -rn "cur.execute" flask_app/                      # sink. holding: sql
+grep -rn "_query(" flask_app/ | grep -v "def "         # who calls _query? get_user built sql from uid
+grep -rn "get_user(" flask_app/ | grep -v "def "       # who calls get_user? the route. holding: uid
+grep -n "uid" flask_app/app.py                         # uid = request.args.get("id")  ← source
+```
+
+`grep -v "def "` hides the definition line so only callers show. Notice hop 2 lists two callers
+of `_query`: `get_user` and `get_order`. Same sink, two paths. One of them is the decoy.
+
 ### Your turn: Flows 2–5
 
 Fill in the table. Backward from each sink.
