@@ -7,8 +7,11 @@ run() { printf '\n\033[1;33m$ %s\033[0m\n' "$*"; eval "$@"; }
 echo "### 1. GREP: find the sinks"
 run 'grep -rnE "subprocess\.|\.execute\(|open\(|render_template_string\(|requests\.get" --include="*.py" flask_app/'
 
-echo; echo "### 2. GREP: who calls the wrappers?"
-run 'grep -rnE "run_cmd|read_doc|get_user" --include=*.py flask_app/'
+echo; echo "### 2. GREP: which functions wrap the helper-file sinks?"
+run 'grep -rn -B8 -E "subprocess\.|open\(|\.execute\(" flask_app/db.py flask_app/utils.py | grep "def "'
+
+echo; echo "### 2b. GREP: who calls those wrappers?"
+run 'grep -rnE "run_cmd\(|read_doc\(|_query\(" --include="*.py" flask_app/ | grep -v "def "'
 
 echo; echo "### 3. TRACE: four greps, sink to source"
 run 'grep -rn -B3 "cur.execute(sql)" flask_app/ | grep -E "def |execute"'
