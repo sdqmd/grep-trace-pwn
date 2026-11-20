@@ -30,8 +30,10 @@ docker build -t grep-trace-pwn . && docker run --rm --name gtp -p 127.0.0.1:5000
 
 Open http://localhost:5000. Six routes, each takes a query parameter.
 
-> macOS: if you get a 403 on port 5000, AirPlay Receiver has it. Turn it off in
-> System Settings → General → AirDrop & Handoff, or map another port:
+> macOS: if `localhost:5000` gives a 403 with `Server: AirTunes`, AirPlay Receiver
+> has that port. Quickest fix: use `http://127.0.0.1:5000` instead of `localhost`
+> (the docker bind still works, AirPlay only answers on `localhost`/IPv6). Or turn it
+> off in System Settings → General → AirDrop & Handoff, or map another port:
 > `-p 127.0.0.1:5001:5000` and read 5001 wherever this guide says 5000.
 
 ## Stop it

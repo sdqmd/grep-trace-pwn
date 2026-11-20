@@ -23,12 +23,14 @@ jobs:
 
       - name: Assemble site from repo docs
         run: |
-          fm() { printf -- "---\ntitle: %s\nnav_order: %s\n---\n\n" "$1" "$2"; }
+          # front matter, then {% raw %} so Jekyll leaves {{7*7}} and {{ name }} in the docs alone
+          fm() { printf -- "---\ntitle: %s\nnav_order: %s\n---\n\n{%% raw %%}\n" "$1" "$2"; }
+          endraw() { printf -- "\n{%% endraw %%}\n"; }
           # rewrite cross-links to the site's filenames
           fix() { sed -e 's#(GUIDE\.md)#(guide.md)#g' -e 's#(SINKS\.md)#(sinks.md)#g' -e 's#(README\.md)#(index.md)#g'; }
-          { fm "Home" 1;   fix < README.md; } > site/index.md
-          { fm "Guide" 2;  fix < GUIDE.md;  } > site/guide.md
-          { fm "Sinks cheatsheet" 3; fix < SINKS.md; } > site/sinks.md
+          { fm "Home" 1;   fix < README.md; endraw; } > site/index.md
+          { fm "Guide" 2;  fix < GUIDE.md;  endraw; } > site/guide.md
+          { fm "Sinks cheatsheet" 3; fix < SINKS.md; endraw; } > site/sinks.md
           cp demo.gif site/demo.gif
 
       - uses: actions/configure-pages@v5
