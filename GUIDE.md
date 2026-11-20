@@ -1,9 +1,7 @@
 # GUIDE: grep → trace → pwn
 
-Work through this with the apps running (see [README](README.md)). Pick Flask or Express,
-the bugs are identical. Commands below show the vulnerable Flask app on `:5001`. Swap
-`5001` → `3000` and `.py` → `.js` for Express. The *fixed* copies sit on `:5002` / `:3002`,
-you'll use them in step 4.
+Work through this with the app running (see [README](README.md)). Commands below hit the
+app on `:5001`.
 
 Have [SINKS.md](SINKS.md) open in another tab.
 
@@ -61,8 +59,6 @@ grep -rnE "run_cmd|read_doc|get_user|get_order|_query" --include=*.py flask_app/
 ```
 
 Now you have the call graph without reading anything.
-
-> **Express**: same exercise with the JS one-liner. Sinks land in `db.js` and `utils.js`.
 
 ---
 
@@ -199,9 +195,8 @@ Now try the same against the decoy:
 curl -s "http://localhost:5001/order?id=1%20UNION%20SELECT%201,2,3"
 ```
 
-Flask: 500 from `int()`. Express: 200, but `parseInt("1 UNION...")` silently returns `1`, so
-your payload was stripped and you get order 1. Either way: candidate dead. This is what a
-sanitizer looks like from the outside, a crash or a clean answer, never your payload.
+500 from `int()`. Candidate dead. This is what a sanitizer looks like from the outside: a
+crash or a clean answer, never your payload.
 
 ### Flow 2: Command injection
 
@@ -233,23 +228,18 @@ Probe. If it renders `49`, the template engine evaluated your input:
 curl -s "http://localhost:5001/hello?name={{7*7}}"
 ```
 
-Express uses EJS, different syntax, same bug:
-
-```bash
-curl -s "http://localhost:3000/hello?name=<%25=7*7%25>"
-```
-
-Both engines can reach the host language from a template. Escalating to code execution is
-your exercise: search "jinja2 SSTI" / "ejs SSTI" payloads, try them, see what each engine
-exposes. The point for now: the user string *is* the template, not data inside it.
+Jinja2 can reach the host language from a template. Escalating to code execution is your
+exercise: search "jinja2 SSTI" payloads, try them, see what the engine exposes. The point for
+now: the user string *is* the template, not data inside it.
 
 ### Flow 5: SSRF
 
 The server fetches whatever URL you give it. Use it to reach something *you* can't reach
-directly. The Express app is on the same container:
+directly. From the host you talk to `:5001`; inside the container the app listens on `:5000`,
+and only the app can reach that:
 
 ```bash
-curl -s "http://localhost:5001/fetch?url=http://127.0.0.1:3000/user?id=1"
+curl -s "http://localhost:5001/fetch?url=http://127.0.0.1:5000/user?id=2"
 ```
 
 In the real world this is cloud metadata (`http://169.254.169.254/`), internal admin panels,
@@ -286,32 +276,15 @@ Now `get_user` is safe for every caller forever. **Fix at the sink.** Same logic
 | 4 | `render_template_string("<h1>Hello {{ name }}</h1>", name=name)`, user data as *context*, not template |
 | 5 | parse URL, allowlist scheme `http(s)` and host |
 
-Do it, rerun your payloads, watch them die.
+Do it, rebuild (`docker build -t grep-trace-pwn .`), rerun `./check.sh`. The flow you fixed
+flips from PASS to FAIL. That flip is the proof.
 
-### 4b. Compare with the fixed service
+### 4b. The decoy already showed you both kinds of fix
 
-You don't have to write the fixes to see them. `flask_app_fixed/` is the same app with every
-sink fixed at the sink, running on `:5002`. Same payload, two curls:
-
-```bash
-curl -s "http://localhost:5001/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"
-curl -s "http://localhost:5002/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"
-```
-
-Flag on the first, empty rows on the second. Now look at exactly what changed:
-
-```bash
-diff -u flask_app/db.py flask_app_fixed/db.py
-diff -u flask_app/utils.py flask_app_fixed/utils.py
-diff -u flask_app/app.py flask_app_fixed/app.py
-```
-
-Every hunk is a sanitizer, and every sanitizer matches its sink: `?` for SQL, an argument list
-for the shell, `realpath` + prefix check for the path, data-as-context for the template, a
-host allowlist for the URL. Nothing else moved.
-
-`./check.sh` runs both sides: on the vulnerable side PASS means the exploit worked, on the
-fixed side PASS means it was blocked.
+Look at `/order` again. Its route does `get_order(int(oid))` (app.py:64), but `get_order`
+itself still builds SQL by string concat (db.py:48). The sanitizer lives at the *caller*, so
+`/order` is safe today and the next caller of `get_order` that forgets `int()` is not. Compare
+with the sink-side fix above, where `get_user` becomes safe for everyone at once.
 
 ---
 
@@ -331,27 +304,9 @@ Look at `semgrep/flask.yml`. Two rules:
 - `flask-taint-with-wrappers`: same, plus `get_user`, `run_cmd`, `read_doc` as sinks. Now it
   finds **all 5**, and skips the decoy because `int(...)` is declared a sanitizer.
 
-> **Express** (`semgrep/express.yml`, run against `/src/express_app`): the builtin rule finds
-> 4 of 5, not 2. `res.send` is a sink, and taint flows *through* `runCmd()` / `readDoc()`
-> return values back into it. Only `/user` (→ `res.json`) escapes. Same fix: add the
-> wrappers, get all 5. Decoy skipped in both via `parseInt`.
-
-Now run the same rules on the fixed app:
-
-```bash
-docker run --rm -v "$PWD:/src" semgrep/semgrep semgrep scan --config /src/semgrep/flask.yml /src/flask_app_fixed
-```
-
-The builtin rule is quiet: the rule names `safe_url` and `safe_path` as sanitizers, the
-template sink only counts its *template* argument, and `cursor.execute(sql, params)` gets a
-constant. The wrapper rule still flags every route that calls a wrapper (`/user`, `/ping`,
-`/docs`, `/order`), because we told it those wrappers are sinks and never told it the fix made
-that false. Keep your sink list honest both ways.
-
-> **Express**: the builtin rule keeps firing on the fixed app too, for `/ping`, `/docs` and
-> `/fetch`. `res.send` is a sink, and the *output* of `runCmd` / `readDoc` / `fetch` is still
-> derived from user input, so taint flows through. Those are false positives: the dangerous
-> call is gone, the echo isn't. Step 3 exists for exactly this reason.
+Now fix flow 1 at the sink (step 4) and run the rules again. The wrapper rule still flags
+`/user`, because you told it `get_user` is a sink and never told it the fix made that false.
+Keep your sink list honest both ways.
 
 That's the lesson. **Tools are only as good as your sink list.** You did step 1 (grep the
 wrappers) so you could teach the tool. CodeQL does cross-function tracing out of the box but
