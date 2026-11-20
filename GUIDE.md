@@ -314,7 +314,19 @@ costs a build step. Both give *candidates*. Step 3 is still yours.
 
 ---
 
-## 6. HOMEWORK: AI as a junior auditor
+## 6. HOMEWORK
+
+Three things, in order. Each one takes about twenty minutes.
+
+1. **Run `./check.sh`.** All five flows PASS, the decoy shows blocked. That's your baseline.
+2. **Fix one sink.** Pick flow 1. Change `db.py` so `get_user` binds `uid` with `?` instead
+   of pasting it into the string (step 4 shows the exact lines). Rebuild, rerun `./check.sh`,
+   and watch that one row flip from PASS to FAIL. Then do another flow.
+3. **Grep a repo you already know.** Take the one-liner from SINKS.md, run it on a codebase
+   you work on. Every hit, ask: where does this come from? Write down the ones you can't
+   answer in under a minute. Those are where you start.
+
+### Optional: AI as a junior auditor
 
 Point an LLM at `flask_app/` and ask:
 
@@ -323,9 +335,6 @@ Point an LLM at `flask_app/` and ask:
 
 Compare against your table from step 2. Note what it missed, what it invented, and whether it
 caught the decoy. Treat it exactly like Semgrep: candidates in, verification by you.
-
-Then go find a real codebase you already know. Run the grep from SINKS.md. Every hit, ask:
-**where does this come from?**
 
 That's the whole job.
 
