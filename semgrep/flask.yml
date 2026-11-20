@@ -1,0 +1,53 @@
+rules:
+  # Rule 1: stdlib sinks only. Finds flows where source and sink are in the SAME function
+  # (Flow 4 SSTI, Flow 5 SSRF). Misses the ones routed through db.py / utils.py.
+  - id: flask-taint-builtin-sinks
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: "user input ($SOURCE) reaches a dangerous function without sanitization"
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: flask.request.args.get(...)
+              - pattern: flask.request.args[...]
+              - pattern: flask.request.form.get(...)
+              - pattern: flask.request.form[...]
+    pattern-sanitizers:
+      - pattern: int(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: flask.render_template_string(...)
+              - pattern: requests.get(...)
+              - pattern: subprocess.run(...)
+              - pattern: subprocess.Popen(...)
+              - pattern: os.system(...)
+              - pattern: $CUR.execute(...)
+              - pattern: open(...)
+              - pattern: eval(...)
+              - pattern: pickle.loads(...)
+
+  # Rule 2: same, plus THIS APP's wrappers as sinks. You found them in step 1 with grep.
+  # Now Semgrep finds all 5 flows and skips the decoy (int() is a sanitizer).
+  - id: flask-taint-with-wrappers
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: "user input reaches a sink or a wrapper around one ($SINK)"
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: flask.request.args.get(...)
+              - pattern: flask.request.args[...]
+    pattern-sanitizers:
+      - pattern: int(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: flask.render_template_string(...)
+              - pattern: requests.get(...)
+              - pattern: get_user(...)
+              - pattern: get_order(...)
+              - pattern: run_cmd(...)
+              - pattern: read_doc(...)
