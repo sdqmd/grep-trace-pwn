@@ -16,6 +16,7 @@ rules:
       - patterns:
           - pattern-either:
               - pattern: fetch(...)
+              - pattern: ejs.render(...)
               - pattern: $RES.send(...)
               - pattern: $CP.exec(...)
               - pattern: $CP.execSync(...)
@@ -39,6 +40,7 @@ rules:
       - patterns:
           - pattern-either:
               - pattern: fetch(...)
+              - pattern: ejs.render(...)
               - pattern: $RES.send(...)
               - pattern: getUser(...)
               - pattern: getOrder(...)

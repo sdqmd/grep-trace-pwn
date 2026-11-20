@@ -1,6 +1,7 @@
 // grep-trace-pwn: intentionally vulnerable Express app.
 // 5 flows + 1 decoy. Find them. Trace them. Pwn them.
 const express = require("express");
+const ejs = require("ejs");
 const { initDb, getUser, getOrder } = require("./db");
 const { runCmd, readDoc } = require("./utils");
 
@@ -40,7 +41,7 @@ app.get("/docs", (req, res) => {
 
 app.get("/hello", (req, res) => {
   const name = req.query.name || "world";
-  res.send("<h1>Hello " + name + "</h1>");
+  res.send(ejs.render("<h1>Hello " + name + "</h1>"));
 });
 
 app.get("/fetch", async (req, res) => {

