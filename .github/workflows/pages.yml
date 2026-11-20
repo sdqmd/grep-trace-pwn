@@ -3,7 +3,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["README.md", "GUIDE.md", "SINKS.md", "site/**", ".github/workflows/pages.yml"]
+    paths: ["README.md", "GUIDE.md", "SINKS.md", "demo.gif", "site/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -29,6 +29,7 @@ jobs:
           { fm "Home" 1;   fix < README.md; } > site/index.md
           { fm "Guide" 2;  fix < GUIDE.md;  } > site/guide.md
           { fm "Sinks cheatsheet" 3; fix < SINKS.md; } > site/sinks.md
+          cp demo.gif site/demo.gif
 
       - uses: actions/configure-pages@v5
       - uses: actions/jekyll-build-pages@v1
