@@ -107,16 +107,15 @@ You don't need an IDE for this. At each hop, grep for the name you're holding, r
 that produced it, and now you're holding something new. Stop when it's `request.`:
 
 ```bash
-grep -rn "cur.execute(sql)" flask_app/                 # the sink: db.py:34
-grep -n "^def " flask_app/db.py                        # list the defs: 34 sits under 31, so it's inside _query
-grep -rn "_query(" flask_app/ | grep -v "def "         # who calls _query? db.py:43 (under 40: get_user), db.py:49 (under 46: get_order)
-grep -rn "get_user(" flask_app/ | grep -v "def "       # who calls get_user? app.py:33, the route. holding: uid
-grep -n "uid = " flask_app/app.py                      # app.py:32  uid = request.args.get("id")  ← the ?id= in the URL
+grep -rn -B3 "cur.execute(sql)" flask_app/ | grep -E "def |execute"     # db.py-31-def _query   ← the sink is inside _query
+grep -rn -B3 "_query(sql)}" flask_app/ | grep -E "def |_query"          # def get_user over :43, def get_order over :49
+grep -rn -B3 "get_user(uid)" flask_app/app.py | grep -E "def |get_user" # def user() over :33, the route. holding: uid
+grep -n "uid = " flask_app/app.py                                       # :32  uid = request.args.get("id")  ← the ?id= in the URL
 ```
 
-The loop: grep what you're holding, `grep -n "^def "` to see which function the hit sits in
-(the nearest def with a smaller line number), grep that function's name for its callers, repeat.
-`grep -v "def "` hides the definition line so only callers show. Notice hop 2 lists two callers
+The loop: grep what you're holding with `-B3` so the `def` line above each hit comes along,
+filter to `def |<pattern>` so you see only the hit and its enclosing function, then grep that
+function's name for its callers. Repeat until the line says `request.` Notice hop 2 lists two callers
 of `_query`: `get_user` and `get_order`. Same sink, two paths. One of them is the decoy.
 
 ### Your turn: Flows 2–5

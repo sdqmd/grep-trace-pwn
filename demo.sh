@@ -11,10 +11,9 @@ echo; echo "### 2. GREP: who calls the wrappers?"
 run 'grep -rnE "run_cmd|read_doc|get_user" --include=*.py flask_app/'
 
 echo; echo "### 3. TRACE: four greps, sink to source"
-run 'grep -rn "cur.execute(sql)" flask_app/'
-run 'grep -n "^def " flask_app/db.py'
-run 'grep -rn "_query(" flask_app/ | grep -v "def "'
-run 'grep -rn "get_user(" flask_app/ | grep -v "def "'
+run 'grep -rn -B3 "cur.execute(sql)" flask_app/ | grep -E "def |execute"'
+run 'grep -rn -B3 "_query(sql)}" flask_app/ | grep -E "def |_query"'
+run 'grep -rn -B3 "get_user(uid)" flask_app/app.py | grep -E "def |get_user"'
 run 'grep -n "uid = " flask_app/app.py'
 
 echo; echo "### 4. PWN: probe"
