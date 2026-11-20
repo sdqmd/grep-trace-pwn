@@ -55,7 +55,7 @@ Then open **[GUIDE.md](GUIDE.md)** and work through it.
 | File | Purpose |
 |---|---|
 | `GUIDE.md` | step-by-step: grep → trace → pwn → fix → automate |
-| `SINKS.md` | the cheatsheet. dangerous functions for Python + JS. memorise it |
+| `SINKS.md` | the cheatsheet. dangerous Python functions. memorise it |
 | `flask_app/` | the target, ~100 lines |
 | `semgrep/` | taint rules that find (some of) the flows automatically |
 | `check.sh` | fires every payload, PASS/FAIL per flow. Fix a sink and watch its row flip |
