@@ -107,12 +107,15 @@ You don't need an IDE for this. At each hop, grep for the name you're holding, r
 that produced it, and now you're holding something new. Stop when it's `request.`:
 
 ```bash
-grep -rn "cur.execute" flask_app/                      # sink. holding: sql
-grep -rn "_query(" flask_app/ | grep -v "def "         # who calls _query? get_user built sql from uid
-grep -rn "get_user(" flask_app/ | grep -v "def "       # who calls get_user? the route. holding: uid
-grep -n "uid" flask_app/app.py                         # uid = request.args.get("id")  ← source
+grep -rn "cur.execute(sql)" flask_app/                 # the sink: db.py:34
+grep -n "^def " flask_app/db.py                        # list the defs: 34 sits under 31, so it's inside _query
+grep -rn "_query(" flask_app/ | grep -v "def "         # who calls _query? db.py:43 (under 40: get_user), db.py:49 (under 46: get_order)
+grep -rn "get_user(" flask_app/ | grep -v "def "       # who calls get_user? app.py:33, the route. holding: uid
+grep -n "uid = " flask_app/app.py                      # app.py:32  uid = request.args.get("id")  ← the ?id= in the URL
 ```
 
+The loop: grep what you're holding, `grep -n "^def "` to see which function the hit sits in
+(the nearest def with a smaller line number), grep that function's name for its callers, repeat.
 `grep -v "def "` hides the definition line so only callers show. Notice hop 2 lists two callers
 of `_query`: `get_user` and `get_order`. Same sink, two paths. One of them is the decoy.
 
