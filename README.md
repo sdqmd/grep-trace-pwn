@@ -18,19 +18,21 @@ decoy, so you can practise all three steps.
 ## Run it
 
 ```bash
-docker run --rm --name gtp -p 127.0.0.1:5001:5000 ghcr.io/sdqmd/grep-trace-pwn
+docker run --rm --name gtp -p 127.0.0.1:5000:5000 ghcr.io/sdqmd/grep-trace-pwn
 ```
 
 Or build locally:
 
 ```bash
 git clone https://github.com/sdqmd/grep-trace-pwn && cd grep-trace-pwn
-docker build -t grep-trace-pwn . && docker run --rm --name gtp -p 127.0.0.1:5001:5000 grep-trace-pwn
+docker build -t grep-trace-pwn . && docker run --rm --name gtp -p 127.0.0.1:5000:5000 grep-trace-pwn
 ```
 
-Open http://localhost:5001. Six routes, each takes a query parameter.
+Open http://localhost:5000. Six routes, each takes a query parameter.
 
-> Host port 5001 (not 5000) because macOS AirPlay Receiver squats on 5000.
+> macOS: if you get a 403 on port 5000, AirPlay Receiver has it. Turn it off in
+> System Settings → General → AirDrop & Handoff, or map another port:
+> `-p 127.0.0.1:5001:5000` and read 5001 wherever this guide says 5000.
 
 ## Stop it
 

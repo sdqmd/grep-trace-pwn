@@ -3,9 +3,9 @@
 #   PASS on flows 1-5 = the exploit worked (the planted bug is live)
 #   PASS on the decoy = the payload was blocked (the int() sanitizer held)
 # After you fix a sink yourself, the matching flow should flip to FAIL. That's the point.
-# Usage: ./check.sh              (app on :5001)
+# Usage: ./check.sh              (app on :5000)
 #        FLASK=http://localhost:5000 ./check.sh
-FLASK="${FLASK:-http://localhost:5001}"
+FLASK="${FLASK:-http://localhost:5000}"
 fail=0
 
 hit() { curl -s --max-time 8 "$1"; }

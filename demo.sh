@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The exact commands for the live demo, in order. Copy-paste from here, never from memory.
-# Run from the repo root with the container up on :5001.
-B="${FLASK:-http://localhost:5001}"
+# Run from the repo root with the container up on :5000.
+B="${FLASK:-http://localhost:5000}"
 run() { printf '\n\033[1;33m$ %s\033[0m\n' "$*"; eval "$@"; }
 
 echo "### 1. GREP: find the sinks"
