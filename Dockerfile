@@ -1,5 +1,8 @@
 FROM node:20-bookworm-slim
 
+LABEL org.opencontainers.image.source=https://github.com/sdqmd/grep-trace-pwn
+LABEL org.opencontainers.image.description="grep, trace, pwn: intentionally vulnerable Flask + Express targets"
+
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 python3-pip iputils-ping curl \
  && rm -rf /var/lib/apt/lists/*
