@@ -18,21 +18,21 @@ same 5 bugs planted in each, plus one decoy, so you can practise all three steps
 ## Run it
 
 ```bash
-docker run --rm -p 5000:5000 -p 3000:3000 ghcr.io/sdqmd/grep-trace-pwn
+docker run --rm -p 127.0.0.1:5000:5000 -p 127.0.0.1:3000:3000 ghcr.io/sdqmd/grep-trace-pwn
 ```
 
 Or build locally:
 
 ```bash
 git clone https://github.com/sdqmd/grep-trace-pwn && cd grep-trace-pwn
-docker build -t grep-trace-pwn . && docker run --rm -p 5000:5000 -p 3000:3000 grep-trace-pwn
+docker build -t grep-trace-pwn . && docker run --rm -p 127.0.0.1:5000:5000 -p 127.0.0.1:3000:3000 grep-trace-pwn
 ```
 
 - Flask: http://localhost:5000
 - Express: http://localhost:3000
 
 > macOS: port 5000 is often taken by AirPlay Receiver (you'll get a 403). Use
-> `-p 5001:5000` and browse `localhost:5001` instead.
+> `-p 127.0.0.1:5001:5000` and browse `localhost:5001` instead.
 
 Then open **[GUIDE.md](GUIDE.md)** and work through it.
 
@@ -69,7 +69,11 @@ Don't read this until you've tried grepping yourself.
 
 ## Warning
 
-These apps are deliberately broken. Run them in Docker only. Don't expose the ports to a network you don't own.
+These apps are deliberately broken. Run them in Docker only.
+
+**Keep the `127.0.0.1:` prefix on every `-p`.** Without it Docker binds to all interfaces, and
+anyone on the same wifi can reach `/ping?host=;…` on your laptop and run commands inside the
+container. Same bug class as the ones you're about to find, one layer down.
 
 ## License
 
