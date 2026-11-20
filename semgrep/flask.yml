@@ -15,10 +15,14 @@ rules:
               - pattern: flask.request.form[...]
     pattern-sanitizers:
       - pattern: int(...)
+      - pattern: safe_url(...)
+      - pattern: safe_path(...)
     pattern-sinks:
       - patterns:
+          - pattern: flask.render_template_string($TPL, ...)
+          - focus-metavariable: $TPL
+      - patterns:
           - pattern-either:
-              - pattern: flask.render_template_string(...)
               - pattern: requests.get(...)
               - pattern: subprocess.run(...)
               - pattern: subprocess.Popen(...)
@@ -42,10 +46,14 @@ rules:
               - pattern: flask.request.args[...]
     pattern-sanitizers:
       - pattern: int(...)
+      - pattern: safe_url(...)
+      - pattern: safe_path(...)
     pattern-sinks:
       - patterns:
+          - pattern: flask.render_template_string($TPL, ...)
+          - focus-metavariable: $TPL
+      - patterns:
           - pattern-either:
-              - pattern: flask.render_template_string(...)
               - pattern: requests.get(...)
               - pattern: get_user(...)
               - pattern: get_order(...)

@@ -18,21 +18,39 @@ same 5 bugs planted in each, plus one decoy, so you can practise all three steps
 ## Run it
 
 ```bash
-docker run --rm -p 127.0.0.1:5000:5000 -p 127.0.0.1:3000:3000 ghcr.io/sdqmd/grep-trace-pwn
+docker run --rm --name gtp -p 127.0.0.1:5001:5000 -p 127.0.0.1:3000:3000 -p 127.0.0.1:5002:5002 -p 127.0.0.1:3002:3002 ghcr.io/sdqmd/grep-trace-pwn
 ```
 
 Or build locally:
 
 ```bash
 git clone https://github.com/sdqmd/grep-trace-pwn && cd grep-trace-pwn
-docker build -t grep-trace-pwn . && docker run --rm -p 127.0.0.1:5000:5000 -p 127.0.0.1:3000:3000 grep-trace-pwn
+docker build -t grep-trace-pwn . && docker run --rm --name gtp -p 127.0.0.1:5001:5000 -p 127.0.0.1:3000:3000 -p 127.0.0.1:5002:5002 -p 127.0.0.1:3002:3002 grep-trace-pwn
 ```
 
-- Flask: http://localhost:5000
-- Express: http://localhost:3000
+| | Flask | Express |
+|---|---|---|
+| **vulnerable** | http://localhost:5001 | http://localhost:3000 |
+| **fixed** | http://localhost:5002 | http://localhost:3002 |
 
-> macOS: port 5000 is often taken by AirPlay Receiver (you'll get a 403). Use
-> `-p 127.0.0.1:5001:5000` and browse `localhost:5001` instead.
+Same routes, same payloads, two outcomes. The fixed apps are a copy with every sink fixed
+*at the sink*. `diff -u flask_app/db.py flask_app_fixed/db.py` is the whole lesson.
+
+> Host port 5001 (not 5000) because macOS AirPlay Receiver squats on 5000.
+
+## Stop it
+
+```bash
+docker stop gtp
+```
+
+`--rm` removes the container on stop. To reclaim the disk space too:
+
+```bash
+docker rmi ghcr.io/sdqmd/grep-trace-pwn
+```
+
+Forgot the name? `docker ps` lists what's running, `docker stop <id>` stops it.
 
 Then open **[GUIDE.md](GUIDE.md)** and work through it.
 
@@ -44,8 +62,9 @@ Then open **[GUIDE.md](GUIDE.md)** and work through it.
 | `SINKS.md` | the cheatsheet. dangerous functions for Python + JS. memorise it |
 | `flask_app/` | Python target, ~100 lines |
 | `express_app/` | JS target, same bugs |
+| `flask_app_fixed/`, `express_app_fixed/` | the same apps, every sink fixed. `diff` them |
 | `semgrep/` | taint rules that find (some of) the flows automatically |
-| `check.sh` | fires every payload, prints PASS/FAIL per flow |
+| `check.sh` | fires every payload at both sides: exploit works on vuln, blocked on fixed |
 | `demo.sh` | the live-demo commands, in order |
 | `demo.tape` | [VHS](https://github.com/charmbracelet/vhs) script that renders `demo.gif` |
 

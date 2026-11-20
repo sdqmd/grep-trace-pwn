@@ -12,11 +12,15 @@ rules:
               - pattern: $REQ.params.$X
     pattern-sanitizers:
       - pattern: parseInt(...)
+      - pattern: safeUrl(...)
+      - pattern: safePath(...)
     pattern-sinks:
+      - patterns:
+          - pattern: ejs.render($TPL, ...)
+          - focus-metavariable: $TPL
       - patterns:
           - pattern-either:
               - pattern: fetch(...)
-              - pattern: ejs.render(...)
               - pattern: $RES.send(...)
               - pattern: $CP.exec(...)
               - pattern: $CP.execSync(...)
@@ -36,11 +40,15 @@ rules:
               - pattern: $REQ.query.$X
     pattern-sanitizers:
       - pattern: parseInt(...)
+      - pattern: safeUrl(...)
+      - pattern: safePath(...)
     pattern-sinks:
+      - patterns:
+          - pattern: ejs.render($TPL, ...)
+          - focus-metavariable: $TPL
       - patterns:
           - pattern-either:
               - pattern: fetch(...)
-              - pattern: ejs.render(...)
               - pattern: $RES.send(...)
               - pattern: getUser(...)
               - pattern: getOrder(...)

@@ -17,9 +17,12 @@ RUN cd express_app && npm install --omit=dev --no-audit --no-fund
 
 COPY flask_app flask_app
 COPY express_app express_app
+COPY flask_app_fixed flask_app_fixed
+COPY express_app_fixed express_app_fixed
+RUN ln -s /app/express_app/node_modules /app/express_app_fixed/node_modules
 COPY secret secret
 COPY start.sh start.sh
 RUN chmod +x start.sh
 
-EXPOSE 5000 3000
+EXPOSE 5000 3000 5002 3002
 CMD ["./start.sh"]
