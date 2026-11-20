@@ -10,7 +10,7 @@ Set TypingSpeed 40ms
 
 Type "# grep: find the sinks" Enter
 Sleep 500ms
-Type `grep -rnE "subprocess|\.execute\(|open\(|render_template_string|requests\.get" --include=*.py flask_app/` Enter
+Type `grep -rnE "subprocess\.|\.execute\(|open\(|render_template_string\(|requests\.get" --include="*.py" flask_app/` Enter
 Sleep 3s
 
 Type "# trace: who calls get_user?" Enter

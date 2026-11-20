@@ -5,7 +5,7 @@ B="${FLASK:-http://localhost:5001}"
 run() { printf '\n\033[1;33m$ %s\033[0m\n' "$*"; eval "$@"; }
 
 echo "### 1. GREP: find the sinks"
-run 'grep -rnE "subprocess|\.execute\(|open\(|render_template_string|requests\.get" --include=*.py flask_app/'
+run 'grep -rnE "subprocess\.|\.execute\(|open\(|render_template_string\(|requests\.get" --include="*.py" flask_app/'
 
 echo; echo "### 2. GREP: who calls the wrappers?"
 run 'grep -rnE "run_cmd|read_doc|get_user" --include=*.py flask_app/'

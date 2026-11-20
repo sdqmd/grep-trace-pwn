@@ -36,7 +36,7 @@ wc -l flask_app/*.py
 Sinks are finite. Take the Python one-liner from SINKS.md:
 
 ```bash
-grep -rnE "eval\(|exec\(|os\.system|subprocess|\.execute\(|open\(|pickle\.loads|render_template_string|requests\.(get|post)|redirect\(" --include=*.py flask_app/
+grep -rnE "eval\(|exec\(|os\.system|subprocess\.|\.execute\(|open\(|pickle\.loads|render_template_string\(|requests\.(get|post)|redirect\(" --include="*.py" flask_app/
 ```
 
 You should get roughly:
